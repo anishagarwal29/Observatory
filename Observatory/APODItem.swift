@@ -15,4 +15,17 @@ struct APODItem: Codable, Identifiable {
         case title, explanation, url, hdurl, date, copyright
         case mediaType = "media_type"
     }
+    
+    var formattedDate: String {
+        let inputFormatter = DateFormatter()
+        inputFormatter.dateFormat = "yyyy-MM-dd"
+        
+        if let dateObj = inputFormatter.date(from: date) {
+            let outputFormatter = DateFormatter()
+            outputFormatter.dateFormat = "dd-MM-yyyy"
+            return outputFormatter.string(from: dateObj)
+        }
+        
+        return date
+    }
 }
