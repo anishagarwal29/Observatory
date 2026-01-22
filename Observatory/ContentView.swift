@@ -21,17 +21,24 @@ struct ContentView: View {
                         if item.mediaType == "video" {
                              videoPlaceholder(for: item)
                                 .frame(maxWidth: 800, maxHeight: 600)
-                                .padding(40)
+                                .padding(20)
                         } else {
+                            // KEY FIX: The ID ensures the View IDENTITY changes when the URL changes.
+                            // This forces SwiftUI to discard the old AsyncImage immediately and start fresh,
+                            // showing the placeholder (empty phase) instanty.
                             AsyncImage(url: URL(string: item.hdurl ?? item.url)) { phase in
                                 switch phase {
                                 case .empty:
-                                    // Loading
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(Color.white.opacity(0.05))
-                                        .overlay(ProgressView().tint(.white))
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                        .padding(40)
+                                    // Loading State - Explicitly visible immediately on change
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(Color.white.opacity(0.05))
+                                        ProgressView()
+                                            .scaleEffect(1.5)
+                                            .tint(.white)
+                                    }
+                                    .aspectRatio(16/9, contentMode: .fit) // Maintain a reasonable aspect ratio while loading
+                                    .padding(20)
                                 case .success(let image):
                                     // The Main Event
                                     image
@@ -39,27 +46,32 @@ struct ContentView: View {
                                         .aspectRatio(contentMode: .fit)
                                         .clipShape(RoundedRectangle(cornerRadius: 20))
                                         .shadow(color: .black.opacity(0.5), radius: 10, x: 0, y: 5)
-                                        .padding(40) // "Breathing room"
-                                        .id(item.url) // Stability
+                                        .padding(20) // Reduced padding to make image larger
                                         .transition(.opacity.animation(.easeInOut))
                                 case .failure:
-                                    // Error
-                                    RoundedRectangle(cornerRadius: 20)
-                                        .fill(Color.white.opacity(0.05))
-                                        .overlay(
+                                    // Error State
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 20)
+                                            .fill(Color.white.opacity(0.05))
+                                        
+                                        VStack(spacing: 16) {
                                             Image(systemName: "exclamationmark.triangle")
                                                 .font(.largeTitle)
                                                 .foregroundColor(.red)
-                                        )
-                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                        .padding(40)
+                                            Text("Failed to load high-res image")
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                    .aspectRatio(16/9, contentMode: .fit)
+                                    .padding(20)
                                 @unknown default:
                                     EmptyView()
                                 }
                             }
+                            .id(item.url) // CRITICAL: This forces the "Hard Reset"
                         }
                     } else {
-                        // Global Loading State
+                        // Global Loading State (Initial App Load)
                         ProgressView()
                             .scaleEffect(1.5)
                             .tint(.white)
@@ -102,7 +114,7 @@ struct ContentView: View {
         // 4. The Inspector
         .inspector(isPresented: $isInspectorPresented) {
             InspectorView(item: viewModel.apodItem)
-                .inspectorColumnWidth(min: 300, ideal: 320, max: 400)
+                .inspectorColumnWidth(min: 300, ideal: 350, max: 450) // Slightly wider ideal width
                 .toolbar {
                     // Start sidebar content from the top
                     Spacer()
@@ -129,6 +141,7 @@ struct ContentView: View {
                 } else {
                     ForEach(viewModel.historyItems) { historyItem in
                         Button {
+                            // Updating the view model triggers the ID change on the main image
                             viewModel.selectItem(historyItem)
                         } label: {
                             AsyncImage(url: URL(string: historyItem.url)) { phase in
@@ -209,7 +222,7 @@ struct InspectorView: View {
                         Text(item.title)
                             .font(.title2)
                             .fontWeight(.bold)
-                            .foregroundStyle(.primary) // Uses system color (white in dark mode)
+                            .foregroundStyle(.primary)
                     }
                     
                     Divider()
